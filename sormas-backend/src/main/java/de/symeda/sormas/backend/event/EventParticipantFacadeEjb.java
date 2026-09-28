@@ -366,6 +366,9 @@ public class EventParticipantFacadeEjb
 		Join<EventParticipant, Person> personJoin = eventParticipantJoin.join(EventParticipant.PERSON, JoinType.INNER);
 		Join<EventParticipant, Case> caseJoin = eventParticipantJoin.join(EventParticipant.RESULTING_CASE, JoinType.LEFT);
 		Join<EventParticipant, District> districtJoin = eventParticipantJoin.join(EventParticipant.DISTRICT, JoinType.LEFT);
+		EventParticipantQueryContext queryContext = new EventParticipantQueryContext(cb, cq, eventParticipantJoin);
+		Expression<Boolean> inJurisdictionSelector =
+			JurisdictionHelper.booleanSelector(cb, service.inJurisdictionOrOwned(queryContext));
 
 		cq.multiselect(
 			eventRoot.get(Event.UUID),
@@ -382,7 +385,8 @@ public class EventParticipantFacadeEjb
 			personJoin.get(PersonDto.SEX),
 			districtJoin.get(District.NAME),
 			eventParticipantJoin.get(EventParticipantDto.INVOLVEMENT_DESCRIPTION),
-			caseJoin.get(Case.UUID));
+			caseJoin.get(Case.UUID),
+			inJurisdictionSelector);
 
 		cq.where(
 			cb.and(
@@ -404,6 +408,15 @@ public class EventParticipantFacadeEjb
 					.ifPresent(eventParticipantSelectionDto::setContactCount);
 			}
 		}
+
+		Pseudonymizer<EventParticipantSelectionDto> pseudonymizer =
+			createGenericPlaceholderPseudonymizer(createSpecialAccessChecker(resultList));
+		pseudonymizer.pseudonymizeDtoCollection(
+			EventParticipantSelectionDto.class,
+			resultList,
+			EventParticipantSelectionDto::isInJurisdiction,
+			null);
+
 		return resultList;
 	}
 

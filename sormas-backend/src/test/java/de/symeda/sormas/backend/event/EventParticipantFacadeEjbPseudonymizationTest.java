@@ -36,13 +36,17 @@ import de.symeda.sormas.api.event.EventDto;
 import de.symeda.sormas.api.event.EventInvestigationStatus;
 import de.symeda.sormas.api.event.EventParticipantCriteria;
 import de.symeda.sormas.api.event.EventParticipantDto;
+import de.symeda.sormas.api.event.EventParticipantSelectionDto;
 import de.symeda.sormas.api.event.EventStatus;
 import de.symeda.sormas.api.i18n.Captions;
 import de.symeda.sormas.api.i18n.I18nProperties;
 import de.symeda.sormas.api.person.PersonDto;
 import de.symeda.sormas.api.person.Sex;
 import de.symeda.sormas.api.user.DefaultUserRole;
+import de.symeda.sormas.api.user.JurisdictionLevel;
 import de.symeda.sormas.api.user.UserDto;
+import de.symeda.sormas.api.user.UserRight;
+import de.symeda.sormas.api.user.UserRoleReferenceDto;
 import de.symeda.sormas.api.utils.AccessDeniedException;
 import de.symeda.sormas.api.utils.DateHelper;
 import de.symeda.sormas.backend.AbstractBeanTest;
@@ -177,6 +181,47 @@ public class EventParticipantFacadeEjbPseudonymizationTest extends AbstractBeanT
 
 		assertNotPseudonymized(participants.stream().filter(p -> p.getUuid().equals(eventParticipant1.getUuid())).findFirst().get());
 		assertPseudonymized(participants.stream().filter(p -> p.getUuid().equals(eventParticipant2.getUuid())).findFirst().get());
+	}
+
+	@Test
+	public void testMergeSelectionPseudonymizesPersonalDataWithoutViewRights() {
+		loginWith(nationalAdmin);
+
+		EventDto event = creator.createEvent(EventStatus.SIGNAL, EventInvestigationStatus.PENDING, "Merge event", "", user2.toReference(), rdcf2, null);
+		PersonDto firstPerson = creator.createPerson("Alice", "Example", Sex.FEMALE, 1980, 10, 23);
+		PersonDto secondPerson = creator.createPerson("Bob", "Example", Sex.MALE, 1985, 4, 12);
+		EventParticipantDto firstParticipant =
+			creator.createEventParticipant(event.toReference(), firstPerson, "First involvement", user2.toReference(), rdcf2);
+		EventParticipantDto secondParticipant =
+			creator.createEventParticipant(event.toReference(), secondPerson, "Second involvement", user2.toReference(), rdcf2);
+
+		UserRoleReferenceDto mergeRole = creator.createUserRoleWithRequiredRights(
+			"MergeWithoutPersonalData",
+			JurisdictionLevel.DISTRICT,
+			UserRight.PERSON_MERGE,
+			UserRight.EVENTPARTICIPANT_VIEW);
+		UserDto mergeUser = creator.createUser(rdcf2, mergeRole);
+
+		loginWith(mergeUser);
+
+		List<EventParticipantSelectionDto> selections =
+			getEventParticipantFacade().getEventParticipantsWithSameEvent(firstPerson.getUuid(), secondPerson.getUuid());
+
+		assertThat(selections.size(), is(2));
+		for (EventParticipantSelectionDto selection : selections) {
+			assertThat(selection.isPseudonymized(), is(true));
+			assertThat(selection.getFirstName(), is(I18nProperties.getCaption(Captions.inaccessibleValue)));
+			assertThat(selection.getLastName(), is(I18nProperties.getCaption(Captions.inaccessibleValue)));
+			assertThat(selection.getAgeAndBirthDate(), is(I18nProperties.getCaption(Captions.inaccessibleValue)));
+			assertThat(selection.getInvolvementDescription(), is(I18nProperties.getCaption(Captions.inaccessibleValue)));
+		}
+
+		assertThat(
+			selections.stream().map(EventParticipantSelectionDto::getUuid).collect(java.util.stream.Collectors.toSet()),
+			is(new java.util.HashSet<>(Arrays.asList(firstParticipant.getUuid(), secondParticipant.getUuid()))));
+		assertThat(
+			selections.stream().map(EventParticipantSelectionDto::getPersonUuid).collect(java.util.stream.Collectors.toSet()),
+			is(new java.util.HashSet<>(Arrays.asList(firstPerson.getUuid(), secondPerson.getUuid()))));
 	}
 
 	@Test

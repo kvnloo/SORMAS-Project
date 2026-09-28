@@ -5,9 +5,11 @@ import java.io.Serializable;
 import de.symeda.sormas.api.person.ApproximateAgeType;
 import de.symeda.sormas.api.person.PersonHelper;
 import de.symeda.sormas.api.person.Sex;
+import de.symeda.sormas.api.utils.PersonalData;
+import de.symeda.sormas.api.utils.SensitiveData;
 import de.symeda.sormas.api.utils.pseudonymization.PseudonymizableIndexDto;
 
-public class EventParticipantSelectionDto extends PseudonymizableIndexDto implements Serializable, Cloneable {
+public class EventParticipantSelectionDto extends PseudonymizableIndexDto implements IsEventParticipant, Serializable, Cloneable {
 
 	public static final String EVENT_UUID = "eventUuid";
 	public static final String EVENT_TITLE = "eventTitle";
@@ -25,9 +27,14 @@ public class EventParticipantSelectionDto extends PseudonymizableIndexDto implem
 
 	private final EventReferenceDto event;
 	private final String personUuid;
-	private final String firstName;
-	private final String lastName;
-	private final String ageAndBirthDate;
+	@PersonalData
+	@SensitiveData
+	private String firstName;
+	@PersonalData
+	@SensitiveData
+	private String lastName;
+	@PersonalData
+	private String ageAndBirthDate;
 	private final Integer approximateAge;
 	private final ApproximateAgeType approximateAgeType;
 	private final Integer birthdateDD;
@@ -35,7 +42,8 @@ public class EventParticipantSelectionDto extends PseudonymizableIndexDto implem
 	private final Integer birthdateYYYY;
 	private final Sex sex;
 	private final String districtName;
-	private final String involvementDescription;
+	@SensitiveData
+	private String involvementDescription;
 	private final String resultingCaseUuid;
 	private long contactCount;
 
@@ -54,7 +62,8 @@ public class EventParticipantSelectionDto extends PseudonymizableIndexDto implem
 		Sex sex,
 		String districtName,
 		String involvementDescription,
-		String resultingCaseUuid
+		String resultingCaseUuid,
+		boolean inJurisdiction
 
 	) {
 		super(eventParticipantUuid);
@@ -72,6 +81,7 @@ public class EventParticipantSelectionDto extends PseudonymizableIndexDto implem
 		this.involvementDescription = involvementDescription;
 		this.resultingCaseUuid = resultingCaseUuid;
 		this.ageAndBirthDate = PersonHelper.getAgeAndBirthdateString(approximateAge, approximateAgeType, birthdateDD, birthdateMM, birthdateYYYY);
+		setInJurisdiction(inJurisdiction);
 	}
 
 	public EventReferenceDto getEvent() {
