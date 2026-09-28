@@ -46,6 +46,7 @@ import de.symeda.sormas.api.user.DefaultUserRole;
 import de.symeda.sormas.api.user.JurisdictionLevel;
 import de.symeda.sormas.api.user.UserDto;
 import de.symeda.sormas.api.user.UserRight;
+import de.symeda.sormas.api.user.UserRoleReferenceDto;
 import de.symeda.sormas.api.utils.AccessDeniedException;
 import de.symeda.sormas.api.utils.DateHelper;
 import de.symeda.sormas.backend.AbstractBeanTest;
@@ -194,17 +195,12 @@ public class EventParticipantFacadeEjbPseudonymizationTest extends AbstractBeanT
 		EventParticipantDto secondParticipant =
 			creator.createEventParticipant(event.toReference(), secondPerson, "Second involvement", user2.toReference(), rdcf2);
 
-		UserDto mergeUser = creator.createUser(
-			rdcf2.region.getUuid(),
-			rdcf2.district.getUuid(),
-			rdcf2.facility.getUuid(),
-			"Merge",
-			"User",
+		UserRoleReferenceDto mergeRole = creator.createUserRoleWithRequiredRights(
 			"MergeWithoutPersonalData",
 			JurisdictionLevel.DISTRICT,
-			UserRight.PERSON_VIEW,
 			UserRight.PERSON_MERGE,
 			UserRight.EVENTPARTICIPANT_VIEW);
+		UserDto mergeUser = creator.createUser(rdcf2, mergeRole);
 
 		loginWith(mergeUser);
 
